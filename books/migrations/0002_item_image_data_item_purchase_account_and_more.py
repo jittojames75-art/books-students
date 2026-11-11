@@ -1,0 +1,31 @@
+
+from django.db import migrations, models
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('books', '0001_initial'),
+    ]
+
+    operations = [
+        migrations.AddField(
+            model_name='item',
+            name='image_data',
+            field=models.TextField(blank=True, default=''),
+        ),
+        migrations.AddField(
+            model_name='item',
+            name='purchase_account',
+            field=models.CharField(default='Cost of Goods Sold', max_length=100),
+        ),
+        migrations.AddField(
+            model_name='item',
+            name='sales_account',
+            field=models.CharField(default='Sales', max_length=100),
+        ),
+        migrations.AddField(
+            model_name='item',
+            name='tax_preference',
+            field=models.CharField(default='taxable', max_length=30),
+        ),
+    ]

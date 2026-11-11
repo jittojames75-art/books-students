@@ -1,0 +1,676 @@
+'use strict';
+
+const IC = { home: 'M3 11l9-8 9 8v10h-6v-6H9v6H3z', items: 'M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10', inventory: 'M4 4h16v6H4zM4 14h16v6H4z', sales: 'M3 4h3l2 11h10l2-8H7', purchases: 'M5 8h14l-1 12H6zM9 8V6a3 3 0 016 0v2', time: 'M12 7v5l3 2M12 3a9 9 0 100 18 9 9 0 000-18', banking: 'M3 10l9-6 9 6M5 10v8M10 10v8M14 10v8M19 10v8M3 20h18', filing: 'M6 3h9l4 4v14H6zM9 12h7M9 16h7', accountant: 'M12 4a3 3 0 100 6 3 3 0 000-6M5 20c0-4 3-6 7-6s7 2 7 6', reports: 'M5 20V10M12 20V4M19 20v-7', documents: 'M3 6h7l2 2h9v11H3z', pay: 'M3 7h18v10H3zM3 11h18' };
+const NAV = [
+  ['Home', 'home', ['Dashboard', 'Getting Started', 'Recent Updates']],
+  ['Items', 'items', ['Items', 'Item Categories', 'Price Lists']],
+  ['Inventory', 'inventory', ['Inventory Summary', 'Stock Adjustments', 'Stock Transfers', 'Warehouses']],
+  ['Sales', 'sales', ['Customers', 'Quotes', 'Sales Orders', 'Invoices', 'Recurring Invoices', 'Retainer Invoices', 'Delivery Challans', 'Payments Received', 'Credit Notes', 'E-Way Bills']],
+  ['Purchases', 'purchases', ['Vendors', 'Expenses', 'Purchase Orders', 'Bills', 'Payments Made', 'Vendor Credits']],
+  ['Time Tracking', 'time', ['Projects', 'Timesheets']],
+  ['Banking', 'banking', []],
+  ['Filing & Compliance', 'filing', ['GST Filing', 'GSTR-1 Summary', 'GSTR-3B Summary', 'Input Tax Credit Summary', 'Tax Liability Summary']],
+  ['Accountant', 'accountant', ['Manual Journals', 'Chart of Accounts', 'Transaction Locking', 'Statutory Audit Logs', 'Tenant Administration', 'Security & Compliance']],
+  ['Reports', 'reports', [
+    'Stock Movement',
+    'Inventory Summary',
+    'Stock In Report',
+    'Stock Out Report',
+    'Stock Transfer Report',
+    'Opening Stock Report',
+    'Stock in Hand Report',
+    'Reports Center',
+    'Business Overview',
+    'Sales Reports',
+    'Purchase Reports',
+    'Inventory Reports',
+    'Receivables',
+    'Payables',
+    'Tax Reports',
+    'Accounting Reports',
+    'Cash Flow Reports'
+  ]],
+  ['Documents', 'documents', ['All Documents', 'Files', 'Bank Statements', 'Folders', 'Trash']],
+  ['Convosis Payments', 'pay', ['Payment Overview', 'Payment Transactions', 'Payment Settings']],
+];
+const DEFAULT_ROUTES = {
+  home: 'home/dashboard',
+  items: 'items/items',
+  inventory: 'inventory/inventory-summary',
+  sales: 'sales/quotes',
+  purchases: 'purchases/bills',
+  time: 'time/projects',
+  banking: 'banking',
+  filing: 'filing/gst-filing',
+  accountant: 'accountant/manual-journals',
+  reports: 'reports/reports-center',
+  documents: 'documents/all-documents',
+  pay: 'pay/payment-overview',
+  settings: 'settings/dashboard',
+};
+const ROUTES = {
+  'home': r => renderDashboard(r),
+  'home/dashboard': r => renderDashboard(r),
+  'home/getting-started': gettingStarted,
+  'home/recent-updates': recentUpdates,
+
+  'items': r => listPage(r, LISTS.items),
+  'items/items': r => listPage(r, LISTS.items),
+  'items/items-services': r => listPage(r, LISTS.items),
+  'items/item-categories': r => listPage(r, LISTS['item-categories']),
+  'items/price-lists': r => listPage(r, LISTS['price-lists']),
+
+  'inventory': r => listPage(r, LISTS.inventory),
+  'inventory/inventory-summary': r => listPage(r, LISTS.inventory),
+  'inventory/stock-adjustments': r => listPage(r, LISTS.adjustments),
+  'inventory/stock-transfers': r => listPage(r, LISTS['stock-transfers']),
+  'inventory/stock-movement': r => { location.hash = '#/reports/stock-movement'; },
+  'inventory/warehouses': r => listPage(r, LISTS.warehouses),
+
+  'sales': r => docMasterDetail(r, 'quotes'),
+  'sales/quotes': r => docMasterDetail(r, 'quotes'),
+  'sales/customers': r => listPage(r, LISTS.customers),
+  'sales/sales-orders': r => docMasterDetail(r, 'sales-orders'),
+  'sales/invoices': r => docMasterDetail(r, 'invoices'),
+  'sales/recurring-invoices': r => docMasterDetail(r, 'recurring-invoices'),
+  'sales/retainer-invoices': r => docMasterDetail(r, 'retainer-invoices'),
+  'sales/delivery-challans': r => listPage(r, LISTS['delivery-challans']),
+  'sales/payments-received': r => listPage(r, LISTS['payments-received']),
+  'sales/credit-notes': r => listPage(r, LISTS['credit-notes']),
+  'sales/e-way-bills': r => listPage(r, LISTS['e-way-bills']),
+
+  'purchases': r => docMasterDetail(r, 'bills'),
+  'purchases/vendors': r => listPage(r, LISTS.vendors),
+  'purchases/expenses': r => listPage(r, LISTS.expenses),
+  'purchases/purchase-orders': r => docMasterDetail(r, 'purchase-orders'),
+  'purchases/bills': r => docMasterDetail(r, 'bills'),
+  'purchases/payments-made': r => listPage(r, LISTS['payments-made']),
+  'purchases/vendor-credits': r => listPage(r, LISTS['vendor-credits']),
+
+  'time': r => listPage(r, LISTS.projects),
+  'time/projects': r => listPage(r, LISTS.projects),
+  'time/timesheets': r => listPage(r, LISTS.timesheets),
+
+  'banking': r => renderBankingModule(r, 'dashboard'),
+  'banking/dashboard': r => renderBankingModule(r, 'dashboard'),
+  'banking/banking-dashboard': r => renderBankingModule(r, 'dashboard'),
+  'banking/bank-accounts': r => renderBankingModule(r, 'bank-accounts'),
+  'banking/bank-statements': r => renderBankingModule(r, 'bank-statements'),
+  'banking/all-transactions': r => renderBankingModule(r, 'all-transactions'),
+  'banking/uncategorized-transactions': r => renderBankingModule(r, 'uncategorized-transactions'),
+  'banking/matched-transactions': r => renderBankingModule(r, 'matched-transactions'),
+  'banking/categorized-transactions': r => renderBankingModule(r, 'categorized-transactions'),
+  'banking/unmatched-transactions': r => renderBankingModule(r, 'unmatched-transactions'),
+  'banking/bank-reconciliation': r => renderBankingModule(r, 'bank-reconciliation'),
+  'banking/transfers-between-accounts': r => renderBankingModule(r, 'transfers-between-accounts'),
+  'banking/transfers': r => renderBankingModule(r, 'transfers-between-accounts'),
+  'banking/transactions': r => renderBankingModule(r, 'all-transactions'),
+  'banking/deposits': r => renderBankingModule(r, 'deposits'),
+  'banking/bank-rules': r => renderBankingModule(r, 'bank-rules'),
+  'banking/import-bank-statements': r => renderBankingModule(r, 'import-bank-statements'),
+  'banking/banking-reports': r => renderBankingModule(r, 'banking-reports'),
+  'banking/reconciliation-history': r => renderBankingModule(r, 'reconciliation-history'),
+
+  'filing': r => gstFilingPage(r, 'overview'),
+  'filing/gst-filing': r => gstFilingPage(r, 'overview'),
+  'filing/gstr-1-summary': r => gstFilingPage(r, 'gstr1'),
+  'filing/gstr-3b-summary': r => gstFilingPage(r, 'gstr3b'),
+  'filing/input-tax-credit-summary': r => gstFilingPage(r, 'itc'),
+  'filing/tax-liability-summary': r => gstFilingPage(r, 'tax'),
+
+  'accountant': r => listPage(r, LISTS['manual-journals']),
+  'accountant/manual-journals': r => listPage(r, LISTS['manual-journals']),
+  'accountant/chart-of-accounts': r => listPage(r, LISTS.accounts),
+  'accountant/transaction-locking': r => transactionLockingPage(r),
+  'accountant/statutory-audit-logs': r => listPage(r, LISTS['audit-logs']),
+  'accountant/tenant-admin': r => tenantAdminPage(r),
+  'accountant/tenant-administration': r => tenantAdminPage(r),
+  'accountant/security-compliance': r => securityCompliancePage(r),
+
+  'settings': r => typeof renderSettingsDashboard === 'function' ? renderSettingsDashboard(r) : null,
+  'settings/dashboard': r => typeof renderSettingsDashboard === 'function' ? renderSettingsDashboard(r) : null,
+  'settings/all': r => typeof renderSettingsDashboard === 'function' ? renderSettingsDashboard(r) : null,
+  'settings/organization': r => typeof renderSettingsShell === 'function' ? renderSettingsShell(r, 'profile', 'Organization Profile', renderOrgProfilePage) : null,
+  'settings/users': r => typeof renderSettingsShell === 'function' ? renderSettingsShell(r, 'users', 'Users', renderSettingsUsersPage) : null,
+  'settings/roles': r => typeof renderSettingsShell === 'function' ? renderSettingsShell(r, 'roles', 'Roles', renderSettingsRolesPage) : null,
+  'settings/roles/new': r => typeof renderRoleEditorPage === 'function' ? renderRoleEditorPage(r, 'new') : null,
+  'settings/profile': r => typeof renderSettingsShell === 'function' ? renderSettingsShell(r, 'profile', 'Organization Profile', renderOrgProfilePage) : null,
+  'settings/branding': r => typeof renderSettingsShell === 'function' ? renderSettingsShell(r, 'branding', 'Company Branding', renderBrandingPage) : null,
+  'settings/ai': r => typeof renderSettingsShell === 'function' ? renderSettingsShell(r, 'ai', 'AI Control Center', renderAiControlCenterPage) : null,
+  'settings/taxes': r => typeof renderSettingsShell === 'function' ? renderSettingsShell(r, 'taxes', 'Taxes', renderTaxesPage) : null,
+  'settings/direct-taxes': r => typeof renderSettingsShell === 'function' ? renderSettingsShell(r, 'direct-taxes', 'Direct Taxes', renderDirectTaxesPage) : null,
+  'settings/eway-bills': r => typeof renderSettingsShell === 'function' ? renderSettingsShell(r, 'eway-bills', 'e-Way Bills', renderEwayBillsPage) : null,
+  'settings/einvoicing': r => typeof renderSettingsShell === 'function' ? renderSettingsShell(r, 'einvoicing', 'e-Invoicing', renderEinvoicingPage) : null,
+  'settings/msme': r => typeof renderSettingsShell === 'function' ? renderSettingsShell(r, 'msme', 'MSME Settings', renderMsmePage) : null,
+  'settings/general': r => typeof renderSettingsShell === 'function' ? renderSettingsShell(r, 'general', 'General Preferences', renderGeneralSettingsPage) : null,
+  'settings/currencies': r => typeof renderSettingsShell === 'function' ? renderSettingsShell(r, 'currencies', 'Currencies', renderCurrenciesPage) : null,
+  'settings/payment-terms': r => typeof renderSettingsShell === 'function' ? renderSettingsShell(r, 'payment-terms', 'Payment Terms', renderPaymentTermsPage) : null,
+  'settings/opening-balances': r => typeof renderSettingsShell === 'function' ? renderSettingsShell(r, 'opening-balances', 'Opening Balances', renderOpeningBalancesPage) : null,
+  'settings/reminders': r => typeof renderSettingsShell === 'function' ? renderSettingsShell(r, 'reminders', 'Reminders', renderRemindersPage) : null,
+  'settings/customer-portal': r => typeof renderSettingsShell === 'function' ? renderSettingsShell(r, 'customer-portal', 'Customer Portal', renderCustomerPortalPage) : null,
+  'settings/number-series': r => typeof renderSettingsShell === 'function' ? renderSettingsShell(r, 'number-series', 'Transaction Number Series', renderNumberSeriesPage) : null,
+  'settings/pdf-templates': r => typeof renderSettingsShell === 'function' ? renderSettingsShell(r, 'pdf-templates', 'PDF Templates', renderPdfTemplatesPage) : null,
+  'settings/email-notifications': r => typeof renderSettingsShell === 'function' ? renderSettingsShell(r, 'email-notifications', 'Email Notifications', renderNotificationsPage) : null,
+  'settings/sms-notifications': r => typeof renderSettingsShell === 'function' ? renderSettingsShell(r, 'sms-notifications', 'SMS Notifications', renderNotificationsPage) : null,
+  'settings/digital-signature': r => typeof renderSettingsShell === 'function' ? renderSettingsShell(r, 'digital-signature', 'Digital Signature', renderDigitalSignaturePage) : null,
+  'settings/subscription-billing': r => typeof renderSettingsShell === 'function' ? renderSettingsShell(r, 'subscription-billing', 'Manage Subscription', subscriptionBillingPage) : subscriptionBillingPage(r),
+  'settings/tenant-admin': r => tenantAdminPage(r),
+  'developer/platform': r => developerPlatformPage(r),
+  'platform/super-admin': r => superAdminDashboard(r),
+
+  'reports': r => reportsCenterPage(r),
+  'reports/reports-center': r => reportsCenterPage(r),
+  'reports/stock-movement': r => listPage(r, LISTS.movements),
+  'reports/inventory-summary': r => listPage(r, LISTS.inventory),
+  'reports/stock-in-report': r => stockInReportPage(r),
+  'reports/stock-out-report': r => stockOutReportPage(r),
+  'reports/stock-transfer-report': r => stockTransferReportPage(r),
+  'reports/opening-stock-report': r => openingStockReportPage(r),
+  'reports/stock-in-hand-report': r => stockInHandReportPage(r),
+  'reports/business-overview': r => profitAndLossPage(r),
+  'reports/sales-reports': r => reportTablePage(r, 'sales-by-customer', 'Sales By Customer Report', 'Sales'),
+  'reports/purchase-reports': r => reportTablePage(r, 'purchases-by-vendor', 'Purchases By Vendor Report', 'Purchases'),
+  'reports/inventory-reports': r => reportTablePage(r, 'inventory-summary', 'Inventory Valuation Summary', 'Inventory'),
+  'reports/receivables': r => reportTablePage(r, 'receivables-aging', 'Accounts Receivable Aging Summary', 'Receivables'),
+  'reports/payables': r => reportTablePage(r, 'payables-aging', 'Accounts Payable Aging Summary', 'Payables'),
+  'reports/tax-reports': r => gstFilingPage(r, 'overview'),
+  'reports/accounting-reports': r => trialBalancePage(r),
+  'reports/cash-flow-reports': r => cashFlowPage(r),
+
+  'documents': r => documentsPage(r, 'all'),
+  'documents/all-documents': r => documentsPage(r, 'all'),
+  'documents/files': r => documentsPage(r, 'files'),
+  'documents/bank-statements': r => documentsPage(r, 'bank_statement'),
+  'documents/folders': r => documentsPage(r, 'folders'),
+  'documents/trash': r => documentsPage(r, 'trash'),
+
+  'pay': r => paymentOverviewPage(r),
+  'pay/payment-overview': r => paymentOverviewPage(r),
+  'pay/payment-transactions': r => listPage(r, LISTS['payment-transactions']),
+  'pay/payment-settings': r => paymentSettingsPage(r),
+};
+const PASTEL = {
+  home: 'icon-sky',
+  items: 'icon-indigo',
+  inventory: 'icon-peach',
+  sales: 'icon-sky',
+  purchases: 'icon-peach',
+  time: 'icon-mint',
+  banking: 'icon-mint',
+  filing: 'icon-lavender',
+  accountant: 'icon-indigo',
+  reports: 'icon-lavender',
+  documents: 'icon-sky',
+  pay: 'icon-rose'
+};
+let openG = pref.get('open', ['home']);
+
+const NAV_NEW_ACTIONS = {
+  'items/items': () => itemForm(),
+  'items/item-categories': () => categoryModal(),
+  'items/price-lists': () => priceListModal(),
+  'inventory/stock-adjustments': () => adjustForm(),
+  'inventory/stock-transfers': () => stockTransferModal(),
+  'reports/stock-movement': () => stockMoveModal(),
+  'reports/stock-transfer-report': () => stockMoveModal(),
+  'inventory/warehouses': () => warehouseModal(),
+  'sales/customers': () => partyForm('customers'),
+  'sales/quotes': () => docMasterDetail($('#pg'), 'quotes', 'new'),
+  'sales/sales-orders': () => docMasterDetail($('#pg'), 'sales-orders', 'new'),
+  'sales/invoices': () => invoiceForm(null, $('#pg'), () => { location.hash = '#/sales/invoices'; route(); }),
+  'sales/recurring-invoices': () => recurringInvoiceForm(null, $('#pg'), () => { location.hash = '#/sales/recurring-invoices'; route(); }),
+  'sales/retainer-invoices': () => retainerInvoiceForm(null, $('#pg'), (savedDoc) => {
+    if (savedDoc) docMasterDetail($('#pg'), 'retainer-invoices', savedDoc.id);
+    else { location.hash = '#/sales/retainer-invoices'; route(); }
+  }),
+  'sales/delivery-challans': () => challanModal(),
+  'sales/payments-received': () => paymentForm('payments-received'),
+  'sales/credit-notes': () => docForm('credit-notes'),
+  'sales/e-way-bills': () => ewayBillModal(),
+  'purchases/vendors': () => partyForm('vendors'),
+  'purchases/expenses': () => expenseForm(),
+  'purchases/purchase-orders': () => docMasterDetail($('#pg'), 'purchase-orders', 'new'),
+  'purchases/bills': () => { location.hash = '#/purchases/bills'; return docMasterDetail($('#pg'), 'bills', 'new'); },
+  'purchases/payments-made': () => paymentForm('payments-made'),
+  'purchases/vendor-credits': () => docForm('vendor-credits'),
+  'time/projects': () => projectModal(),
+  'time/timesheets': () => timelogModal(),
+  'banking/bank-accounts': () => bankAccountForm(),
+  'accountant/manual-journals': () => journalForm(),
+  'accountant/chart-of-accounts': () => accountForm(),
+  'documents/all-documents': () => documentUploadModal(),
+  'documents/files': () => documentUploadModal(),
+  'documents/folders': () => folderModal()
+};
+
+function getNavAddAction(k, c) {
+  const s = slug(c);
+  const target = k + '/' + s;
+  return NAV_NEW_ACTIONS[target] || NAV_NEW_ACTIONS[k + '/' + c] || NAV_NEW_ACTIONS[c] || null;
+}
+
+function drawNav(cur) {
+  const items = NAV.map(([l, k, ch], i) => {
+    const hasSub = ch && ch.length > 0;
+    const isAct = cur === k || cur.startsWith(k + '/');
+    const isOpen = openG.includes(k);
+    const reportingBadge = k === 'reports' ? '<span class="pastel-chip chip-sky" style="font-size:10px;margin-left:6px;font-weight:700;padding:1px 6px;">Reporting</span>' : '';
+    return `${i === 11 ? '<div class="sec">APPS</div>' : ''}<div class="ni ${isOpen ? 'open' : ''} ${isAct ? 'act' : ''}"><button type="button" data-g="${k}" aria-expanded="${isOpen}"><div class="nav-pastel-icon ${PASTEL[k] || 'icon-sky'}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${IC[k]}"/></svg></div><span class="lb">${esc(l)}</span>${k === 'home' ? '<span class="pastel-chip chip-sky">Live</span>' : ''}${reportingBadge}${hasSub ? `<span class="ar-btn" data-toggle-g="${k}" title="Toggle submenu" aria-label="Toggle submenu"><svg class="ar" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>` : ''}</button>${hasSub ? `<div class="ch">${ch.map((c, cIdx) => {
+      const target = k + '/' + slug(c);
+      const hasAdd = Boolean(getNavAddAction(k, c));
+      let categoryHeader = '';
+      if (k === 'reports') {
+        if (cIdx === 0) {
+          categoryHeader = `<div style="padding:6px 14px 2px;font-size:10px;font-weight:700;letter-spacing:0.05em;color:var(--mu);text-transform:uppercase;display:flex;align-items:center;gap:6px;"><span class="pastel-chip chip-sky" style="font-size:9px;padding:1px 5px;">Reporting</span> Stock & Inventory</div>`;
+        } else if (c === 'Reports Center') {
+          categoryHeader = `<div style="padding:8px 14px 2px;font-size:10px;font-weight:700;letter-spacing:0.05em;color:var(--mu);text-transform:uppercase;">Financial & Tax</div>`;
+        }
+      }
+      return `${categoryHeader}<a href="#/${target}" class="${cur === target ? 'on' : ''}" ${cur === target ? 'aria-current="page"' : ''}><span class="nav-sub-label">${esc(c)}</span>${hasAdd ? `<span class="nav-add-btn" data-nav-add="${target}" title="New ${esc(c)}" aria-label="New ${esc(c)}">+</span>` : ''}</a>`;
+    }).join('')}</div>` : ''}</div>`;
+
+  }).join('');
+  const roleName = APP.user.role_display || (APP.user.role ? APP.user.role.toUpperCase() : 'Administrator');
+  const footer = `<div class="sidebar-footer"><div class="user-snippet" onclick="orgForm()"><div class="user-avatar-badge" id="sidebarUserAvatar">${esc((APP.user.name || 'A')[0].toUpperCase())}</div><div class="user-info"><span class="user-name" id="sidebarUserName">${esc(APP.user.name || APP.user.username || 'Admin')}</span><span class="user-role-tag" id="sidebarUserRoleTag"><span style="width:6px; height:6px; background:var(--accent); border-radius:50%; display:inline-block;"></span><span id="sidebarUserRole">${esc(roleName)}</span></span></div></div></div>`;
+  $('#side').innerHTML = items + footer;
+}
+
+function route() {
+  destroyCharts(); PAGE.reload = null;
+  if (window.Modal && Modal.stack) {
+    while (Modal.stack.length) {
+      const topM = Modal.stack.pop();
+      if (topM && topM.el && topM.el.remove) topM.el.remove();
+    }
+  }
+  document.body.classList.remove('modal-open');
+  let rawFull = (location.hash.slice(2) || 'home/dashboard').replace(/\/$/, '');
+  let raw = rawFull.split('?')[0];
+  let h = DEFAULT_ROUTES[raw] || raw;
+  if (!h || h === 'home') h = 'home/dashboard';
+
+  if (h.startsWith('settings')) {
+    document.body.classList.add('in-settings');
+  } else {
+    document.body.classList.remove('in-settings');
+    window._lastAppHash = location.hash || '#/home/dashboard';
+  }
+
+  const curGroup = h.split('/')[0];
+  if (curGroup) {
+    openG = [curGroup];
+    pref.set('open', openG);
+  }
+
+  const pg = $('#pg'), root = document.createElement('div');
+  pg.replaceChildren(root);
+  drawNav(h);
+  document.body.classList.remove('mo');
+  closePops();
+  let fn = ROUTES[h] || ROUTES[raw];
+  if (!fn && (h.startsWith('settings/roles/') || raw.startsWith('settings/roles/'))) {
+    const roleId = (h.startsWith('settings/roles/') ? h : raw).split('settings/roles/')[1];
+    fn = r => typeof renderRoleEditorPage === 'function' ? renderRoleEditorPage(r, roleId) : null;
+  }
+  if (fn) { Promise.resolve().then(() => fn(root)).catch(e => { root.innerHTML = errBox(e.message); console.error(e); }); }
+  else { const g = NAV.find(n => h.startsWith(n[1] + '/')), nm = g && g[2].find(c => slug(c) === h.split('/')[1]); plannedPage(root, g && g[0], nm); }
+  window.scrollTo(0, 0);
+}
+async function refresh() { try { await loadMe(); } catch (e) { } if (PAGE.reload) PAGE.reload(); else route(); }
+
+async function loadMe() {
+  const me = await api('me/');
+  APP.user = me.user; APP.org = me.organization; APP.today = me.today; APP.counts = me.counts;
+  applyOrg();
+}
+function applyOrg() {
+  const [y, m] = APP.today.split('-').map(Number), fy = m >= 4 ? y : y - 1;
+  $('#orgname').textContent = APP.org.name;
+  $('#orgfy').textContent = `FY ${fy}-${String((fy + 1) % 100).padStart(2, '0')}`;
+  $('#um').textContent = (APP.user.name || 'A')[0].toUpperCase();
+  const rDisp = APP.user.role_display || (APP.user.role ? APP.user.role.toUpperCase() : 'Administrator');
+  const who = $('#who');
+  if (who) who.textContent = 'Signed in as ' + (APP.user.username || '') + (rDisp ? ' (' + rDisp + ')' : '');
+  const ucn = $('#userCardName');
+  if (ucn) ucn.textContent = APP.user.name || APP.user.username || 'User';
+  const uce = $('#userCardEmail');
+  if (uce) uce.textContent = APP.user.email || '';
+  const ucUid = $('#userCardUserId');
+  if (ucUid) ucUid.textContent = (APP.user && (APP.user.user_id || APP.user.user_id_code)) || '-';
+  const ucOid = $('#userCardOrgId');
+  if (ucOid) ucOid.textContent = (APP.org && (APP.org.organization_id || APP.org.org_id)) || '-';
+  const av = $('#sidebarUserAvatar'); if (av) av.textContent = (APP.user.name || 'A')[0].toUpperCase();
+  const un = $('#sidebarUserName'); if (un) un.textContent = APP.user.name || APP.user.username || 'Admin';
+  const ur = $('#sidebarUserRole'); if (ur) ur.textContent = rDisp;
+
+  const btnSuperAdmin = $('#btnSuperAdminNav');
+  if (btnSuperAdmin) {
+    btnSuperAdmin.style.display = (APP.user && APP.user.is_superuser) ? 'flex' : 'none';
+  }
+
+  if (APP.user && APP.user.permissions) {
+    if (APP.user.permissions.is_read_only) {
+      document.body.classList.add('role-auditor');
+      const qc = $('#qc'); if (qc) qc.style.display = 'none';
+      $$('.nav-add-btn').forEach(btn => btn.style.display = 'none');
+    } else {
+      document.body.classList.remove('role-auditor');
+      const qc = $('#qc'); if (qc) qc.style.display = '';
+    }
+  }
+}
+
+const closePops = () => {
+  $$('.pop.on').forEach(p => { p.classList.remove('on'); p.style.display = ''; });
+  $$('.user-menu-wrap.open').forEach(w => w.classList.remove('open'));
+};
+
+(function initUserMenuHover() {
+  const wrap = $('#userMenuWrapper') || $('#um')?.closest('.user-menu-wrap') || $('#um')?.closest('.rel');
+  const menu = $('#umm');
+  if (!wrap || !menu) return;
+  let timer = null;
+
+  wrap.addEventListener('mouseenter', () => {
+    clearTimeout(timer);
+    menu.classList.add('on');
+    wrap.classList.add('open');
+  });
+
+  wrap.addEventListener('mouseleave', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      menu.classList.remove('on');
+      wrap.classList.remove('open');
+    }, 180);
+  });
+})();
+
+document.addEventListener('touchstart', e => {
+  const t = e.target;
+  if (!t.closest('.pop') && !t.closest('#um') && !t.closest('#qc') && !t.closest('#notifBtn') && !t.closest('#orgbtn')) {
+    closePops();
+  }
+}, { passive: true });
+const QC = [
+  ['Customer', () => partyForm('customers')],
+  ['Vendor', () => partyForm('vendors')],
+  ['Invoice', () => { location.hash = '#/sales/invoices'; return docMasterDetail($('#pg'), 'invoices', 'new'); }],
+  ['Bill', () => { location.hash = '#/purchases/bills'; return docMasterDetail($('#pg'), 'bills', 'new'); }],
+  ['Sales Order', () => salesOrderForm()],
+  ['Expense', () => expenseForm()],
+  ['Journal Entry', () => journalForm()],
+  ['Upload Document', () => documentUploadModal()],
+  ['Bank Account', () => bankAccountForm()],
+  ['Payment received', () => paymentForm('payments-received')],
+  ['Payment made', () => paymentForm('payments-made')],
+  ['Item', () => itemForm()],
+  ['Stock adjustment', () => adjustForm()],
+  ['Stock transfer', () => stockTransferModal()]
+];
+const qcmEl = $('#qcm');
+if (qcmEl) qcmEl.innerHTML = QC.map((q, i) => `<button class="mi" type="button" data-q="${i}">New ${esc(q[0].toLowerCase())}</button>`).join('');
+
+function openRecord(t, id) {
+  const M = {
+    customer: ['sales/customers', () => partyDetail('customers', id)],
+    vendor: ['purchases/vendors', () => partyDetail('vendors', id)],
+    invoice: ['sales/invoices', () => docMasterDetail($('#pg'), 'invoices', id)],
+    bill: ['purchases/bills', () => docMasterDetail($('#pg'), 'bills', id)],
+    item: ['items/items-services', () => itemForm(id)],
+    sales_order: ['sales/sales-orders', () => viewSalesOrderDetail(id)],
+    'sales-order': ['sales/sales-orders', () => viewSalesOrderDetail(id)],
+    stock_transfer: ['inventory/stock-transfers', () => viewStockTransferDetail(id)],
+    'stock-transfer': ['inventory/stock-transfers', () => viewStockTransferDetail(id)]
+  };
+  const [r, fn] = M[t];
+  if (location.hash !== '#/' + r) location.hash = '#/' + r;
+  try {
+    const res = fn();
+    if (res && typeof res.catch === 'function') res.catch(e => toast(e.message, 'err'));
+  } catch (e) {
+    toast(e.message, 'err');
+  }
+}
+
+const NotificationCenter = {
+  async fetch() {
+    try {
+      const data = await api('notifications/');
+      const dot = $('#notifDot');
+      const countChip = $('#notifCountChip');
+      const count = (data && data.unread_count) || 0;
+      if (dot) dot.style.display = count > 0 ? 'block' : 'none';
+      if (countChip) countChip.textContent = count;
+
+      const container = $('#notifListContainer');
+      if (!container) return;
+
+      if (!data || !data.notifications || !data.notifications.length) {
+        container.innerHTML = `
+          <div style="padding:32px 20px;text-align:center;color:var(--tx-muted);">
+            <div style="font-size:26px;margin-bottom:6px;">🔔</div>
+            <div style="font-weight:600;font-size:13px;color:var(--tx);">All caught up!</div>
+            <div style="font-size:12px;margin-top:2px;">No unread alerts or notifications</div>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = data.notifications.map(n => `
+        <div class="notif-item" data-notif-id="${n.id}" data-link="${esc(n.link || '')}" style="display:flex;gap:12px;padding:12px 16px;border-bottom:1px solid var(--bd);cursor:pointer;background:${n.is_read ? 'transparent' : 'var(--surface-glass-subtle)'};transition:background 0.15s ease;">
+          <div style="width:32px;height:32px;border-radius:8px;background:${n.category === 'billing' ? 'rgba(239,68,68,0.15)' : n.category === 'banking' ? 'rgba(16,185,129,0.15)' : n.category === 'inventory' ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.15)'};color:${n.category === 'billing' ? '#ef4444' : n.category === 'banking' ? '#10b981' : n.category === 'inventory' ? '#f59e0b' : '#6366f1'};display:grid;place-items:center;font-size:14px;flex-shrink:0;">
+            ${n.category === 'billing' ? '💳' : n.category === 'banking' ? '🏦' : n.category === 'inventory' ? '📦' : '⚖️'}
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:2px;">
+              <span style="font-weight:${n.is_read ? '500' : '700'};font-size:12.5px;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(n.title)}</span>
+              <span style="font-size:10px;color:var(--tx-muted);flex-shrink:0;">${esc(n.created_at)}</span>
+            </div>
+            <div style="font-size:11.5px;color:var(--tx-muted);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(n.message)}</div>
+          </div>
+        </div>
+      `).join('');
+    } catch (e) {
+    }
+  },
+
+  async markRead(id) {
+    try {
+      await api(`notifications/${id}/mark-read/`, { method: 'POST' });
+      this.fetch();
+    } catch(e) {}
+  },
+
+  async markAllRead() {
+    try {
+      await api('notifications/mark-all-read/', { method: 'POST' });
+      toast('All notifications marked as read', 'ok');
+      this.fetch();
+    } catch(e) { toast(e.message, 'err'); }
+  }
+};
+
+document.addEventListener('click', async e => {
+  const t = e.target;
+  const tog = (btn, pop) => {
+    if (!t.closest(btn)) return false;
+    const p = $(pop);
+    if (!p) return false;
+    const on = p.classList.contains('on');
+    closePops();
+    if (!on) {
+      p.classList.add('on');
+      const w = p.closest('.user-menu-wrap');
+      if (w) w.classList.add('open');
+    }
+    return true;
+  };
+  if (t.closest('#btnCloseUserCard')) { closePops(); return; }
+  if (tog('#notifBtn', '#notifPop')) { NotificationCenter.fetch(); return; }
+  if (tog('#qc', '#qcm') || tog('#um', '#umm')) return;
+
+  const markAllBtn = t.closest('#markAllReadBtn');
+  if (markAllBtn) { NotificationCenter.markAllRead(); return; }
+
+  const notifItem = t.closest('.notif-item');
+  if (notifItem) {
+    closePops();
+    const nid = notifItem.dataset.notifId;
+    const link = notifItem.dataset.link;
+    if (nid) NotificationCenter.markRead(nid);
+    if (link) location.hash = link;
+    return;
+  }
+
+  const q = t.closest('[data-q]');
+  if (q) {
+    closePops();
+    const action = QC[q.dataset.q] && QC[q.dataset.q][1];
+    if (action) {
+      try {
+        const res = action();
+        if (res && typeof res.catch === 'function') res.catch(err => toast(err.message, 'err'));
+      } catch (err) {
+        toast(err.message, 'err');
+      }
+    }
+    return;
+  }
+  const sr = t.closest('#qr [data-t]');
+  if (sr) { closePops(); $('#q').value = ''; openRecord(sr.dataset.t, sr.dataset.id); return; }
+  const a = t.closest('[data-a]');
+  if (a && a.closest('#umm')) {
+    closePops();
+    if (a.dataset.a === 'org') orgForm();
+    if (a.dataset.a === 'logout') {
+      const ok = await confirmBox({
+        title: 'Sign Out Confirmation',
+        message: 'Are you sure you want to sign out of Convosis Books?',
+        okText: 'Sign Out',
+        danger: true
+      });
+      if (!ok) return;
+      try {
+        if (APP && APP.user && APP.user.username) {
+          try {
+            localStorage.setItem('convosis_last_login_username', APP.user.username);
+            document.cookie = 'convosis_last_user=' + encodeURIComponent(APP.user.username) + '; path=/; max-age=31536000; SameSite=Lax';
+          } catch(e) {}
+        }
+        await fetch('/accounts/logout/', { method: 'POST', headers: { 'X-CSRFToken': csrf() }, credentials: 'same-origin' });
+      } finally {
+        location.href = '/accounts/login/';
+      }
+    }
+    return;
+  }
+  if (!t.closest('.pop')) {
+    closePops();
+    const np = $('#notifPop'); if (np) np.style.display = 'none';
+  }
+
+  const navAdd = t.closest('[data-nav-add]');
+  if (navAdd) {
+    e.preventDefault();
+    e.stopPropagation();
+    const target = navAdd.dataset.navAdd;
+    const parts = target.split('/');
+    const action = NAV_NEW_ACTIONS[target] || getNavAddAction(parts[0], parts[1]);
+    if (action) {
+      try {
+        const res = action();
+        if (res && typeof res.catch === 'function') res.catch(err => toast(err.message, 'err'));
+      } catch (err) {
+        toast(err.message, 'err');
+      }
+    }
+    return;
+  }
+
+  const togG = t.closest('[data-toggle-g]');
+  if (togG) {
+    const k = togG.dataset.toggleG;
+    openG = openG.includes(k) ? [] : [k];
+    pref.set('open', openG);
+    drawNav(location.hash.slice(2) || 'home/dashboard');
+    return;
+  }
+  const g = t.closest('[data-g]');
+  if (g) {
+    const k = g.dataset.g;
+    openG = [k];
+    pref.set('open', openG);
+    document.body.classList.remove('col');
+    const navG = NAV.find(n => n[1] === k);
+    const firstSlug = navG && navG[2] && navG[2][0] ? slug(navG[2][0]) : '';
+    const dest = DEFAULT_ROUTES[k] || (k + '/' + firstSlug);
+    if (location.hash === '#/' + dest) {
+      drawNav(dest);
+      route();
+    } else {
+      location.hash = '#/' + dest;
+    }
+    return;
+  }
+  if (t.closest('#burger')) {
+    if (innerWidth <= 900) {
+      document.body.classList.toggle('mo');
+    } else {
+      document.body.classList.toggle('col');
+      try { pref.set('sidebar_collapsed', document.body.classList.contains('col')); } catch(e) {}
+    }
+    window.dispatchEvent(new Event('resize'));
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 120);
+    setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+      if (window.DASH && DASH.charts) {
+        Object.values(DASH.charts).forEach(c => { if (c && c.resize) c.resize(); });
+      }
+    }, 260);
+    return;
+  }
+  if (t.closest('#orgbtn')) orgForm();
+  if (t.closest('[data-retry]') && PAGE.reload) PAGE.reload();
+});
+const rfshBtn = $('#rfsh');
+if (rfshBtn) rfshBtn.addEventListener('click', () => { refresh(); toast('Refreshed'); });
+
+let qt;
+const qInp = $('#q');
+if (qInp) {
+  qInp.addEventListener('input', e => {
+    clearTimeout(qt);
+    const v = e.target.value.trim(), box = $('#qr');
+    if (v.length < 2) { if (box) box.classList.remove('on'); return; }
+    qt = setTimeout(async () => {
+      try {
+        const r = await api('search/?' + qs({ q: v }));
+        if (qInp.value.trim() !== v) return;
+        if (box) {
+          box.innerHTML = r.length ? r.map(x => `<button class="mi" type="button" data-t="${esc(x.type)}" data-id="${esc(x.id)}"><b>${esc(x.label)}</b> <span class="sub">${esc(x.sub)}</span></button>`).join('') : '<div class="sub" style="padding:8px">No results</div>';
+          box.classList.add('on');
+        }
+      } catch (err) { }
+    }, 220);
+  });
+}
+document.addEventListener('keydown', e => {
+  if (e.key === '/' && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName) && !Modal.count()) { e.preventDefault(); $('#q').focus(); }
+  if (e.key === 'Escape') {
+    closePops();
+    const np = $('#notifPop'); if (np) np.style.display = 'none';
+  }
+});
+
+loadMe().then(() => {
+  if (pref.get('sidebar_collapsed', false) && innerWidth > 900) {
+    document.body.classList.add('col');
+  }
+  route();
+  addEventListener('hashchange', route);
+  NotificationCenter.fetch();
+  setInterval(() => NotificationCenter.fetch(), 45000);
+}).catch(err => {
+  $('#pg').innerHTML = errBox('Could not load the application: ' + err.message, false);
+});
